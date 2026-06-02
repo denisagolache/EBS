@@ -45,6 +45,13 @@ public class FieldPlan {
         return fieldConfig;
     }
 
+    /**
+     * Modifica presence pentru o subscriptie (folosit in reshuffling)
+     */
+    public void setPresence(int subscriptionIndex, boolean value) {
+        presence[subscriptionIndex] = value;
+    }
+
     private String[] buildOperators(int fieldCount, Double eqFreq) {
         String[] allOps    = getAllOperators();
         String[] nonEqOps  = getNonEqOperators(allOps);
