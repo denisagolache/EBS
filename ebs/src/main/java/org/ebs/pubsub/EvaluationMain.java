@@ -51,21 +51,14 @@ public class EvaluationMain {
                 SUBSCRIPTION_COUNT, PUBS_PER_SECOND);
         System.out.println("=".repeat(80));
 
-        System.out.println("\n" + "#".repeat(72));
-        System.out.println("  PARTEA 1 - EVALUARE CU TOATE CAMPURILE (configuratie normala)");
-        System.out.println("  Durata feed: 180 sec pentru fiecare scenariu");
-        System.out.println("#".repeat(72));
-
-        System.out.println("\n>>> A: eqFreq = 100% pe 'value' (doar operator =) <<<");
-        ScenarioResult rA = runAndPrint("A (100% eq, all fields)", SystemConfig.FIELD_FREQ,
-                SystemConfig.eqFreqFull(), FEED_DURATION_MS);
-
-        System.out.println("\n>>> B: eqFreq = 25% pe 'value' (distributie mixta) <<<");
-        ScenarioResult rB = runAndPrint("B (25% eq, all fields)", SystemConfig.FIELD_FREQ,
-                SystemConfig.eqFreqQuarter(), FEED_DURATION_MS);
+        // Scenariile A si B sunt dezactivate
+        // ScenarioResult rA = runAndPrint("A (100% eq, all fields)", SystemConfig.FIELD_FREQ,
+        //         SystemConfig.eqFreqFull(), FEED_DURATION_MS);
+        // ScenarioResult rB = runAndPrint("B (25% eq, all fields)", SystemConfig.FIELD_FREQ,
+        //         SystemConfig.eqFreqQuarter(), FEED_DURATION_MS);
 
         System.out.println("\n" + "#".repeat(72));
-        System.out.println("  PARTEA 2 - TEST IZOLAT: DOAR CAMPUL 'value' IN SUBSCRIPTII");
+        System.out.println("  TEST IZOLAT: DOAR CAMPUL 'value' IN SUBSCRIPTII");
         System.out.println("  (Masuram impactul pur al operatorului asupra matching-ului)");
         System.out.println("  Durata feed: 30 sec (suficient pentru calcul matching rate)");
         System.out.println("#".repeat(72));
@@ -78,10 +71,10 @@ public class EvaluationMain {
         ScenarioResult rD = runAndPrint("D (25% eq, value-only)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
                 SystemConfig.eqFreqQuarter(), 30_000);
 
-        printReport(rA, rB, rC, rD);
+        printReport(rC, rD);
     }
 
-    static void printReport(ScenarioResult a, ScenarioResult b, ScenarioResult c, ScenarioResult d) {
+    static void printReport(ScenarioResult c, ScenarioResult d) {
         System.out.println("\n" + "=".repeat(80));
         System.out.println("  RAPORT DE EVALUARE");
         System.out.println("=".repeat(80));
@@ -93,72 +86,54 @@ public class EvaluationMain {
         System.out.println("    - Rutare: subscriptii distribuite prin consistent hashing");
         System.out.println("    - Publicatiile traverseaza toti brokerii in lant (0->1->2->livrare)");
         System.out.println("    - Infrastructura Kafka in Docker (Confluent 7.5.0)");
-        System.out.println("    - Serializare JSON cu Jackson (ObjectMapper + tree model)");
+        System.out.println("    - Serializare binara cu Protocol Buffers (protobuf)");
         System.out.println();
         System.out.println("  REZULTATE (valori reale din ultima executie):");
         System.out.println("  ----------------------------------------------------------------------");
-        System.out.printf("  %-30s %12s %12s %12s %12s%n", "Metric", "A(eq100%)", "B(eq25%)", "C(val eq)", "D(val 25)");
+        System.out.printf("  %-30s %18s %18s%n", "Metric", "C (eq=100%)", "D (eq=25%)");
         System.out.println("  ----------------------------------------------------------------------");
-        System.out.printf("  %-30s %12d %12d %12d %12d%n", "Publicatii emise", a.published, b.published, c.published, d.published);
-        System.out.printf("  %-30s %12d %12d %12d %12d%n", "Livrari totale", a.delivered, b.delivered, c.delivered, d.delivered);
-        System.out.printf("  %-30s %11.2f%% %11.2f%% %11.2f%% %11.2f%%%n", "Rata matching",
-                a.matchingRate, b.matchingRate, c.matchingRate, d.matchingRate);
-        System.out.printf("  %-30s %12.2f %12.2f %12.2f %12.2f%n", "Debit (msg/sec)",
-                a.throughput, b.throughput, c.throughput, d.throughput);
-        System.out.printf("  %-30s %9.3f ms %9.3f ms %9.3f ms %9.3f ms%n", "Latenta medie",
-                a.avgLatency, b.avgLatency, c.avgLatency, d.avgLatency);
+        System.out.printf("  %-30s %18d %18d%n",   "Publicatii emise",   c.published,    d.published);
+        System.out.printf("  %-30s %18d %18d%n",   "Livrari totale",     c.delivered,    d.delivered);
+        System.out.printf("  %-30s %17.2f%% %17.2f%%%n", "Rata matching", c.matchingRate, d.matchingRate);
+        System.out.printf("  %-30s %18.2f %18.2f%n", "Debit (msg/sec)",  c.throughput,   d.throughput);
+        System.out.printf("  %-30s %15.3f ms %15.3f ms%n", "Latenta medie", c.avgLatency, d.avgLatency);
         System.out.println("  ----------------------------------------------------------------------");
 
         System.out.println();
         System.out.println("  ANALIZA:");
         System.out.println();
-        System.out.printf("  (a) Publicatii livrate cu succes:%n");
-        System.out.printf("      Scenariu A: ~%,d publicatii emise in 3 min -> ~%,d livrari%n",
-                a.published, a.delivered);
-        System.out.printf("                  (fiecare publicatie ajunge la toti cei 3 subscriberi)%n");
-        System.out.printf("      Scenariu B: ~%,d publicatii emise in 3 min -> ~%,d livrari%n",
-                b.published, b.delivered);
-        System.out.printf("                   (confirmare ca distributia operatorilor nu afecteaza%n");
-        System.out.printf("                    rata de succes cand sunt prezente si alte campuri)%n");
+        System.out.printf("  (a) Publicatii livrate cu succes (interval 30 sec):%n");
+        System.out.printf("      Scenariu C: %,d publicatii emise -> %,d livrari%n",
+                c.published, c.delivered);
+        System.out.printf("      Scenariu D: %,d publicatii emise -> %,d livrari%n",
+                d.published, d.delivered);
         System.out.println();
         System.out.printf("  (b) Latenta medie de livrare:%n");
-        System.out.printf("      Scenariu A: %.3f ms%n", a.avgLatency);
-        System.out.printf("      Scenariu B: %.3f ms%n", b.avgLatency);
-        System.out.printf("      Scenariu C: %.3f ms (doar campul value, 100%% egalitate)%n", c.avgLatency);
-        System.out.printf("      Scenariu D: %.3f ms (doar campul value, 25%% egalitate)%n", d.avgLatency);
+        System.out.printf("      Scenariu C (100%% egalitate pe 'value'): %.3f ms%n", c.avgLatency);
+        System.out.printf("      Scenariu D (25%%  egalitate pe 'value'): %.3f ms%n", d.avgLatency);
         System.out.println("      --");
-        System.out.println("      Latentele sunt de ordinul zecilor de ms, ceea ce este rezonabil");
-        System.out.println("      pentru o infrastructura Kafka locala in Docker. Factorii principali");
-        System.out.println("      sunt serializarea/deserializarea JSON si overhead-ul de retea Kafka.");
+        System.out.println("      Latentele sunt de ordinul zecilor de ms, rezonabil pentru");
+        System.out.println("      o infrastructura Kafka locala in Docker. Factorii principali");
+        System.out.println("      sunt serializarea protobuf si overhead-ul de retea Kafka.");
         System.out.println();
         System.out.printf("  (c) Rata de potrivire (matching):%n");
-        System.out.printf("      Cazul cu 100%% operator de egalitate pe campul 'value':%n");
-        System.out.printf("        Rata matching = %.2f%% (scenariul C)%n", c.matchingRate);
-        System.out.println("        -- Doar ~3 din 100 de publicatii potrivesc o subscriptie,");
-        System.out.println("        deoarece valoarea exacta (Double cu 2 zecimale) trebuie sa coincida");
-        System.out.println("        intr-un spatiu de ~99.000 de valori posibile.");
+        System.out.printf("      C - 100%% operator de egalitate pe campul 'value':%n");
+        System.out.printf("        Rata matching = %.2f%%%n", c.matchingRate);
+        System.out.println("        Valoarea exacta (Double) trebuie sa coincida intr-un spatiu");
+        System.out.println("        de ~99.000 valori posibile -> potriviri rare.");
         System.out.println();
-        System.out.printf("      Cazul cu 25%% operator de egalitate / 75%% alti operatori pe 'value':%n");
-        System.out.printf("        Rata matching = %.2f%% (scenariul D)%n", d.matchingRate);
-        System.out.println("        -- Operatorii !=, <, <=, >, >= sunt mult mai permisivi si");
-        System.out.println("        acopera aproape orice valoare publicata.");
-        System.out.println();
-        System.out.println("      In scenariile A si B (toate campurile):");
-        System.out.println("        Rata matching = 100% in ambele cazuri.");
-        System.out.println("        -- Explicatia: celelalte campuri (company, drop, variation)");
-        System.out.println("        au frecventa si operatori care asigura match pentru toate");
-        System.out.println("        publicatiile, independent de operatorul de pe campul 'value'.");
+        System.out.printf("      D - 25%% operator de egalitate / 75%% alti operatori pe 'value':%n");
+        System.out.printf("        Rata matching = %.2f%%%n", d.matchingRate);
+        System.out.println("        Operatorii !=, <, <=, >, >= acopera intervale largi");
+        System.out.println("        -> aproape orice valoare publicata este potrivita.");
         System.out.println();
         System.out.println("  CONCLUZII:");
+        System.out.println("  * Operatorul de egalitate (100%) reduce drastic matching-ul comparativ");
+        System.out.println("    cu distributia mixta (25%), demonstrand importanta selectarii operatorilor");
         System.out.println("  * Sistemul functioneaza corect cu distributia subscriptiilor pe brokeri");
         System.out.println("    si rutarea in lant a publicatiilor prin toti brokerii");
-        System.out.println("  * Matching-ul este dominat de campurile cu operatori != si de interval");
-        System.out.println("  * Operatorul de egalitate (100%) reduce drastic matching-ul comparativ cu");
-        System.out.println("    distributia mixta (25%), demonstrand importanta selectarii operatorilor");
         System.out.println("  * Arhitectura separa clar Kafka (doar livrare) de logica de business");
-        System.out.println("  * Utilizarea Docker pentru Kafka asigura un mediu reproductibil si izolat");
-        System.out.println("  * Jackson (JSON) ofera o serializare flexibila pentru mesaje eterogene");
-        System.out.println("    (String, Double, LocalDate in acelasi camp polimorfic)");
+        System.out.println("  * Protocol Buffers ofera serializare binara eficienta pentru mesaje eterogene");
         System.out.println();
     }
 
@@ -246,12 +221,12 @@ public class EvaluationMain {
         System.out.println();
         System.out.println("  " + label);
         System.out.println("  " + "-".repeat(55));
-        System.out.printf("  %-30s %,12d%n",        "Publicatii emise:", totalPublished);
-        System.out.printf("  %-30s %,12d%n",        "Livrari totale:", totalDelivered);
-        System.out.printf("  %-30s %,12.2f%n",      "Livrari / publicatie:", deliveriesPerPub);
-        System.out.printf("  %-30s %12.2f%%%n",     "Rata de potrivire:", matchingRate);
-        System.out.printf("  %-30s %,12.2f%n",      "Debit livrari (msg/sec):", deliveredPerSec);
-        System.out.printf("  %-30s %12.3f ms%n",    "Latenta medie:", avgLatency);
+        System.out.printf("  %-30s %,12d%n",     "Publicatii emise:",       totalPublished);
+        System.out.printf("  %-30s %,12d%n",     "Livrari totale:",         totalDelivered);
+        System.out.printf("  %-30s %,12.2f%n",   "Livrari / publicatie:",   deliveriesPerPub);
+        System.out.printf("  %-30s %12.2f%%%n",  "Rata de potrivire:",      matchingRate);
+        System.out.printf("  %-30s %,12.2f%n",   "Debit livrari (msg/sec):", deliveredPerSec);
+        System.out.printf("  %-30s %12.3f ms%n", "Latenta medie:",          avgLatency);
         if (SUBSCRIBER_COUNT <= 3) {
             for (int i = 0; i < SUBSCRIBER_COUNT; i++) {
                 System.out.printf("  >> sub-%d: primite %,d, latenta %.3f ms%n",

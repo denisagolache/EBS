@@ -86,8 +86,7 @@ $env:KAFKA_BOOTSTRAP_SERVERS = "your-kafka-host:9092"
 Proiectul foloseste:
 
 - `kafka-clients:3.6.0` – client Kafka
-- `jackson-databind:2.16.0` – serializare JSON
-- `jackson-datatype-jsr310:2.16.0` – suport `LocalDate` in Jackson
+- `protobuf-java:3.21.12` – serializare binara Protocol Buffers
 - `slf4j-simple:2.0.9` – logging (optional, elimina warning-ul SLF4J)
 
 ## Structura topic-urilor Kafka
