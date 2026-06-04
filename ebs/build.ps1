@@ -18,6 +18,19 @@ try {
     if (-not $?) { throw "docker compose up failed" }
     $composeUpDone = $true
 
+    Write-Host "Waiting for PostgreSQL..."
+    $pgReady = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        $result = docker compose exec -T postgres pg_isready -U ebs -d ebs 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $pgReady = $true
+            Write-Host "PostgreSQL is ready."
+            break
+        }
+        Start-Sleep -Seconds 2
+    }
+    if (-not $pgReady) { throw "PostgreSQL did not become ready within 60 seconds" }
+
     Write-Host "Waiting for Kafka on localhost:9092..."
     $kafkaReady = $false
     for ($i = 0; $i -lt 60; $i++) {

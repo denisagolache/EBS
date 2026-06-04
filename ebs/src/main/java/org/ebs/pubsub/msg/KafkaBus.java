@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -56,6 +57,9 @@ public class KafkaBus implements MessageBus {
 
     private KafkaProducer<String, String> producer;
     private final List<KafkaConsumer<String, String>> consumers = new CopyOnWriteArrayList<>();
+    private final Map<Integer, KafkaConsumer<String, String>> brokerConsumers = new ConcurrentHashMap<>();
+    private final Map<Integer, Future<?>> brokerConsumerFutures = new ConcurrentHashMap<>();
+    private final Set<Integer> activeBrokers = ConcurrentHashMap.newKeySet();
     private final ExecutorService consumerPool;
     private volatile boolean running;
 
@@ -103,7 +107,8 @@ public class KafkaBus implements MessageBus {
         ));
 
         for (int i = 0; i < totalBrokers; i++) {
-            startBrokerConsumer(i);
+            activeBrokers.add(i);
+            startBrokerConsumerInternal(i);
         }
     }
 
@@ -149,7 +154,10 @@ public class KafkaBus implements MessageBus {
         }
     }
 
-    private void startBrokerConsumer(int brokerId) {
+    private void startBrokerConsumerInternal(int brokerId) {
+        if (brokerConsumers.containsKey(brokerId)) {
+            return;
+        }
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,        bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG,                 "broker-" + brokerId + "-" + consumerGroupRunId);
@@ -168,22 +176,35 @@ public class KafkaBus implements MessageBus {
                 topicDeliveryPrefix + "sub-" + brokerId
         ));
         consumers.add(consumer);
+        brokerConsumers.put(brokerId, consumer);
 
-        consumerPool.submit(() -> {
-            while (running) {
-                try {
-                    var records = consumer.poll(Duration.ofMillis(200));
-                    for (ConsumerRecord<String, String> rec : records) {
-                        dispatch(rec.topic(), rec.key(), rec.value(), brokerId);
-                    }
-                } catch (Exception e) {
-                    if (running) {
-                        System.err.println("[KafkaBus] Eroare consumer broker-"
-                                + brokerId + ": " + e.getMessage());
+        Future<?> future = consumerPool.submit(() -> {
+            try {
+                while (running && activeBrokers.contains(brokerId)) {
+                    try {
+                        var records = consumer.poll(Duration.ofMillis(200));
+                        for (ConsumerRecord<String, String> rec : records) {
+                            dispatch(rec.topic(), rec.key(), rec.value(), brokerId);
+                        }
+                    } catch (org.apache.kafka.common.errors.WakeupException e) {
+                        if (!running || !activeBrokers.contains(brokerId)) break;
+                    } catch (Exception e) {
+                        if (running && activeBrokers.contains(brokerId)) {
+                            System.err.println("[KafkaBus] Eroare consumer broker-"
+                                    + brokerId + ": " + e.getMessage());
+                        }
                     }
                 }
+            } finally {
+                try {
+                    consumer.close(Duration.ofSeconds(2));
+                } catch (Exception ignored) {}
+                consumers.remove(consumer);
+                brokerConsumers.remove(brokerId);
+                System.out.println("[KafkaBus] Consumer broker-" + brokerId + " inchis.");
             }
         });
+        brokerConsumerFutures.put(brokerId, future);
     }
 
     // ── Dispatch ──────────────────────────────────────────────────────────────
@@ -231,10 +252,18 @@ public class KafkaBus implements MessageBus {
     @Override
     public void stop() {
         running = false;
+        activeBrokers.clear();
         consumers.forEach(c -> { try { c.wakeup(); } catch (Exception ignored) {} });
-        consumers.forEach(c -> { try { c.close();  } catch (Exception ignored) {} });
+        consumerPool.shutdown();
+        try {
+            consumerPool.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        brokerConsumers.clear();
+        brokerConsumerFutures.clear();
+        consumers.clear();
         if (producer != null) producer.close(Duration.ofSeconds(5));
-        consumerPool.shutdownNow();
     }
 
     @Override
@@ -286,6 +315,28 @@ public class KafkaBus implements MessageBus {
     @Override
     public void onRegisterSubscription(int brokerId, Consumer<SubRegistration> handler) {
         subRegHandlers[brokerId].add(handler);
+    }
+
+    @Override
+    public void stopBrokerConsumer(int brokerId) {
+        activeBrokers.remove(brokerId);
+        KafkaConsumer<String, String> consumer = brokerConsumers.get(brokerId);
+        if (consumer != null) {
+            consumer.wakeup();
+        }
+        System.out.println("[KafkaBus] Broker " + brokerId + " consumer oprit.");
+    }
+
+    @Override
+    public void startBrokerConsumer(int brokerId) {
+        activeBrokers.add(brokerId);
+        startBrokerConsumerInternal(brokerId);
+        System.out.println("[KafkaBus] Broker " + brokerId + " consumer repornit.");
+    }
+
+    @Override
+    public boolean isBrokerConsumerRunning(int brokerId) {
+        return activeBrokers.contains(brokerId) && brokerConsumers.containsKey(brokerId);
     }
 
     // ── Proto Codec ───────────────────────────────────────────────────────────

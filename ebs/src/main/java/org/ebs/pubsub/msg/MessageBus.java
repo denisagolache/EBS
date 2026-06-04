@@ -21,4 +21,8 @@ public interface MessageBus {
     void onForwardToBroker(int brokerId, Consumer<BrokerMessage> handler);
     void onDeliverToSubscriber(String subscriberId, Consumer<DeliveryReport> handler);
     void onRegisterSubscription(int brokerId, Consumer<SubRegistration> handler);
+
+    void stopBrokerConsumer(int brokerId);
+    void startBrokerConsumer(int brokerId);
+    boolean isBrokerConsumerRunning(int brokerId);
 }

@@ -8,8 +8,8 @@ import java.util.List;
 
 public class FieldPlan {
 
-    private static final String[] OPERATORS_STRING = {"=", "!="};
-    private static final String[] OPERATORS_NUM    = {"=", "!=", "<", "<=", ">", ">="};
+    private static final String[] OPERATORS_STRING = {"="};
+    private static final String[] OPERATORS_NUM    = {"=", "<", "<=", ">", ">="};
 
     private final FieldConfig fieldConfig;
     private final boolean[]   presence;   // presence[i] = campul apare in subscriptia i?

@@ -12,11 +12,19 @@ public class SystemConfig {
     public static final String KAFKA_BOOTSTRAP_SERVERS =
             System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092");
 
+    public static final String POSTGRES_JDBC_URL =
+            System.getenv().getOrDefault("POSTGRES_JDBC_URL", "jdbc:postgresql://localhost:5433/ebs");
+    public static final String POSTGRES_USER =
+            System.getenv().getOrDefault("POSTGRES_USER", "ebs");
+    public static final String POSTGRES_PASSWORD =
+            System.getenv().getOrDefault("POSTGRES_PASSWORD", "ebs123");
+
     public static final int PUBLISHER_COUNT = 2;
     public static final int BROKER_COUNT = 3;
     public static final int SUBSCRIBER_COUNT = 3;
     public static final int SUBSCRIPTION_COUNT = 10000;
-    public static final long FEED_DURATION_MS = 180_000;
+    public static final long FEED_DURATION_MS = 30_000;
+    public static final long LONG_FEED_DURATION_MS = 180_000;
     public static final int PUBS_PER_SECOND = 200;
 
     public static List<FieldConfig> buildFieldConfigs() {
