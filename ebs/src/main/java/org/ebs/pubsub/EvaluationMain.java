@@ -62,36 +62,36 @@ public class EvaluationMain {
         System.out.println();
 
         System.out.println("#".repeat(72));
-        System.out.println("  SCENARIU C: eqFreq = 100% pe 'value', doar campul value");
+        System.out.println("  TEST A: eqFreq = 100% pe 'value', doar campul value");
+        System.out.println("  Durata: 3 minute | Subscriptii: 10.000");
+        System.out.println("#".repeat(72));
+        System.out.println(">>> PORNIRE TEST A <<<");
+        ScenarioResult rA = runAndPrint("A (100% eq, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
+                SystemConfig.eqFreqFull(), SystemConfig.LONG_FEED_DURATION_MS);
+        System.out.println("<<< FINAL TEST A >>>");
+        System.out.println();
+
+        System.out.println("#".repeat(72));
+        System.out.println("  TEST B: eqFreq = 25% pe 'value', doar campul value");
+        System.out.println("  Durata: 3 minute | Subscriptii: 10.000");
+        System.out.println("#".repeat(72));
+        System.out.println(">>> PORNIRE TEST B <<<");
+        ScenarioResult rB = runAndPrint("B (25% eq, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
+                SystemConfig.eqFreqQuarter(), SystemConfig.LONG_FEED_DURATION_MS);
+        System.out.println("<<< FINAL TEST B >>>");
+        System.out.println();
+
+        System.out.println("#".repeat(72));
+        System.out.println("  TEST C: Cadere broker cu recuperare din PostgreSQL 17");
         System.out.println("  Durata: 3 minute | Subscriptii: 10.000");
         System.out.println("#".repeat(72));
         System.out.println(">>> PORNIRE TEST C <<<");
-        ScenarioResult rC = runAndPrint("C (100% eq, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
+        runCrashScenario("C (crash broker 1, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
                 SystemConfig.eqFreqFull(), SystemConfig.LONG_FEED_DURATION_MS);
         System.out.println("<<< FINAL TEST C >>>");
         System.out.println();
 
-        System.out.println("#".repeat(72));
-        System.out.println("  SCENARIU D: eqFreq = 25% pe 'value', doar campul value");
-        System.out.println("  Durata: 3 minute | Subscriptii: 10.000");
-        System.out.println("#".repeat(72));
-        System.out.println(">>> PORNIRE TEST D <<<");
-        ScenarioResult rD = runAndPrint("D (25% eq, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
-                SystemConfig.eqFreqQuarter(), SystemConfig.LONG_FEED_DURATION_MS);
-        System.out.println("<<< FINAL TEST D >>>");
-        System.out.println();
-
-        System.out.println("#".repeat(72));
-        System.out.println("  SCENARIU E: Cadere broker cu recuperare din PostgreSQL 17");
-        System.out.println("  Durata: 3 minute | Subscriptii: 10.000");
-        System.out.println("#".repeat(72));
-        System.out.println(">>> PORNIRE TEST E <<<");
-        runCrashScenario("E (crash broker 1, 3 min)", SystemConfig.FIELD_FREQ_VALUE_ONLY,
-                SystemConfig.eqFreqFull(), SystemConfig.LONG_FEED_DURATION_MS);
-        System.out.println("<<< FINAL TEST E >>>");
-        System.out.println();
-
-        printReport(rC, rD);
+        printReport(rA, rB);
     }
 
     // ── Colecteaza evaluarile si match-urile din toti brokerii ────────────────
@@ -104,70 +104,21 @@ public class EvaluationMain {
         return new long[]{ evals, matches };
     }
 
-    static void printReport(ScenarioResult c, ScenarioResult d) {
-        System.out.println("=".repeat(80));
-        System.out.println("  RAPORT DE EVALUARE");
-        System.out.println("=".repeat(80));
+    static void printReport(ScenarioResult a, ScenarioResult b) {
+        System.out.println("=".repeat(72));
+        System.out.println("  RAPORT DE EVALUARE — COMPARATIE A (100% eq) vs B (25% eq)");
+        System.out.println("=".repeat(72));
+        System.out.printf("  %-30s %15s %15s%n",   "Metrica",                 "A (100% eq)", "B (25% eq)");
+        System.out.println("  " + "-".repeat(64));
+        System.out.printf("  (a) %-26s %,15d %,15d%n",   "Publicatii livrate",           a.delivered,      b.delivered);
+        System.out.printf("  (b) %-26s %,15.3f ms %,15.3f ms%n", "Latenta medie",        a.avgLatency,     b.avgLatency);
+        System.out.printf("  (c) %-26s %,14.4f%% %,14.4f%%%n",  "Rata de potrivire",     a.matchingRate,   b.matchingRate);
+        System.out.println("  " + "-".repeat(64));
         System.out.println();
-        System.out.println("  SISTEM:    Retea overlay cu 3 brokeri, 2 publisheri, 3 subscriberi");
-        System.out.println("  ARHITECTURA:");
-        System.out.println("    - Apache Kafka pentru livrarea mesajelor (MessageBus)");
-        System.out.println("    - Filtrare continut, stocare subscriptii, rutare in Java pur");
-        System.out.println("    - Persistence: PostgreSQL 17 pentru subscriptii");
-        System.out.println("    - Rutare: subscriptii distribuite prin consistent hashing");
-        System.out.println("    - Publicatiile traverseaza toti brokerii in lant (0->1->2->livrare)");
-        System.out.println("    - Infrastructura Kafka in Docker (Confluent 7.5.0)");
-        System.out.println("    - Serializare binara cu Protocol Buffers (protobuf)");
-        System.out.println();
-        System.out.println("  NOTA METODOLOGIE:");
-        System.out.println("    Rata de potrivire = subscriptii_cu_match / subscriptii_evaluate");
-        System.out.println("    unde o 'evaluare' = o pereche (subscriptie, publicatie) testata.");
-        System.out.println("    Aceasta masoara probabilitatea ca o subscriptie individuala");
-        System.out.println("    sa se potriveasca cu o publicatie arbitrara.");
-        System.out.println();
-        System.out.println("  REZULTATE (valori reale din ultima executie, 3 minute fiecare):");
-        System.out.println("  " + "-".repeat(62));
-        System.out.printf("  %-34s %13s %13s%n", "Metric", "C (eq=100%)", "D (eq=25%)");
-        System.out.println("  " + "-".repeat(62));
-        System.out.printf("  %-34s %13d %13d%n",   "Publicatii emise",        c.published,      d.published);
-        System.out.printf("  %-34s %13d %13d%n",   "Livrari totale",          c.delivered,      d.delivered);
-        System.out.printf("  %-34s %13d %13d%n",   "Evaluari sub x pub",      c.subEvaluations, d.subEvaluations);
-        System.out.printf("  %-34s %13d %13d%n",   "Match-uri individuale",   c.subMatches,     d.subMatches);
-        System.out.printf("  %-34s %12.4f%% %12.4f%%%n", "Rata matching (c)", c.matchingRate,   d.matchingRate);
-        System.out.printf("  %-34s %13.2f %13.2f%n", "Debit (msg/sec)",       c.throughput,     d.throughput);
-        System.out.printf("  %-34s %10.3f ms %10.3f ms%n", "Latenta medie",   c.avgLatency,     d.avgLatency);
-        System.out.println("  " + "-".repeat(62));
-        System.out.println();
-        System.out.println("  ANALIZA:");
-        System.out.println();
-        System.out.printf("  (a) Publicatii livrate cu succes (3 minute):%n");
-        System.out.printf("      Scenariu C: %,d publicatii -> %,d livrari (%.2f msg/sec)%n",
-                c.published, c.delivered, c.throughput);
-        System.out.printf("      Scenariu D: %,d publicatii -> %,d livrari (%.2f msg/sec)%n",
-                d.published, d.delivered, d.throughput);
-        System.out.println();
-        System.out.printf("  (b) Latenta medie de livrare:%n");
-        System.out.printf("      Scenariu C (100%% egalitate pe 'value'): %.3f ms%n", c.avgLatency);
-        System.out.printf("      Scenariu D (25%%  egalitate pe 'value'): %.3f ms%n", d.avgLatency);
-        System.out.println();
-        System.out.printf("  (c) Rata de potrivire (match-uri / evaluari per subscriptie):%n");
-        System.out.printf("      C - 100%% egalitate: %,d / %,d = %.4f%%%n",
-                c.subMatches, c.subEvaluations, c.matchingRate);
-        System.out.printf("      D - 25%%  egalitate: %,d / %,d = %.4f%%%n",
-                d.subMatches, d.subEvaluations, d.matchingRate);
-        System.out.println();
-        System.out.println("      Interpretare:");
-        System.out.println("      * C (100% egalitate): value=X cu X aleator din [10,1000] cu 2 zecimale");
-        System.out.println("        => probabilitate de match ≈ 1/99000 ≈ 0.001% per subscriptie.");
-        System.out.println("      * D (25% egalitate, 75% range): operatorii <,>,<=,>= pe un interval");
-        System.out.println("        uniform acopera ~50% din spatiu => rata mult mai mare.");
-        System.out.println("      * Diferenta ilustreaza impactul tipului de operator asupra selectivitatii.");
-        System.out.println();
-        System.out.println("  CONCLUZII:");
-        System.out.println("  * Operatorii range genereaza o rata de matching semnificativ mai mare");
-        System.out.println("    decat operatorul de egalitate pe campuri numerice continue.");
-        System.out.println("  * PostgreSQL 17 asigura persistenta si recuperarea automata dupa crash.");
-        System.out.println("  * Arhitectura separa clar Kafka (transport) de logica Java (procesare).");
+        System.out.println("  Concluzie: Operatorii de egalitate (100%) au selectivitate foarte scazuta");
+        System.out.println("  (~0.001%) pe un camp continuu [10, 1000]. La 25% egalitate + 75% operatori");
+        System.out.println("  de comparatie, rata de potrivire creste semnificativ (~37%), deoarece");
+        System.out.println("  operatorii <, >, <=, >= acopera intervale mai largi din spatiul valorilor.");
         System.out.println();
     }
 
@@ -231,14 +182,10 @@ public class EvaluationMain {
         for (PublisherNode p : publishers) totalPublished += p.getPublishedCount();
 
         long totalDelivered = 0, totalLatencyMs = 0;
-        long[] subDeliveries = new long[SUBSCRIBER_COUNT];
-        double[] subLatency  = new double[SUBSCRIBER_COUNT];
         for (int i = 0; i < SUBSCRIBER_COUNT; i++) {
-            subDeliveries[i]  = subscribers.get(i).getReceivedCount();
-            totalDelivered   += subDeliveries[i];
-            totalLatencyMs   += subscribers.get(i).getTotalLatency();
-            subLatency[i]     = subDeliveries[i] > 0
-                    ? (double) subscribers.get(i).getTotalLatency() / subDeliveries[i] : 0;
+            long cnt = subscribers.get(i).getReceivedCount();
+            totalDelivered += cnt;
+            totalLatencyMs += subscribers.get(i).getTotalLatency();
         }
 
         // ── Rata de matching per subscriptie individuala ──────────────────────
@@ -248,28 +195,16 @@ public class EvaluationMain {
         double matchingRate      = totalSubEvaluations > 0
                 ? (double) totalSubMatches / totalSubEvaluations * 100 : 0;
 
-        double avgLatency       = totalDelivered > 0 ? (double) totalLatencyMs / totalDelivered : 0;
-        double deliveriesPerPub = totalPublished > 0 ? (double) totalDelivered / totalPublished : 0;
-        double deliveredPerSec  = feedTime > 0 ? (double) totalDelivered / (feedTime / 1000.0) : 0;
+        double avgLatency      = totalDelivered > 0 ? (double) totalLatencyMs / totalDelivered : 0;
+        double deliveredPerSec = feedTime > 0 ? (double) totalDelivered / (feedTime / 1000.0) : 0;
 
-        // ── Afisare ───────────────────────────────────────────────────────────
+        // ── Afisare — doar ce cere enuntul (a) livrari, (b) latenta, (c) matching ──
         System.out.println();
         System.out.println("  REZULTATE " + label);
         System.out.println("  " + "-".repeat(55));
-        System.out.printf("  %-30s %,12d%n",     "Publicatii emise:",           totalPublished);
-        System.out.printf("  %-30s %,12d%n",     "Livrari totale:",             totalDelivered);
-        System.out.printf("  %-30s %,12.2f%n",   "Livrari / publicatie:",       deliveriesPerPub);
-        System.out.printf("  %-30s %,12d%n",     "Evaluari sub x pub:",         totalSubEvaluations);
-        System.out.printf("  %-30s %,12d%n",     "Match-uri individuale:",      totalSubMatches);
-        System.out.printf("  %-30s %12.4f%%%n",  "Rata de potrivire (c):",      matchingRate);
-        System.out.printf("  %-30s %,12.2f%n",   "Debit livrari (msg/sec):",    deliveredPerSec);
-        System.out.printf("  %-30s %12.3f ms%n", "Latenta medie:",              avgLatency);
-        if (SUBSCRIBER_COUNT <= 3) {
-            for (int i = 0; i < SUBSCRIBER_COUNT; i++) {
-                System.out.printf("  >> sub-%d: primite %,d, latenta %.3f ms%n",
-                        i, subDeliveries[i], subLatency[i]);
-            }
-        }
+        System.out.printf("  (a) %-30s %,12d%n", "Publicatii livrate cu succes:", totalDelivered);
+        System.out.printf("  (b) %-30s %12.3f ms%n", "Latenta medie de livrare:",  avgLatency);
+        System.out.printf("  (c) %-30s %12.4f%%%n",  "Rata de potrivire:",          matchingRate);
         System.out.println();
 
         for (SubscriberNode s : subscribers) s.stop();
@@ -374,54 +309,31 @@ public class EvaluationMain {
         pubPool.awaitTermination(2, TimeUnit.SECONDS);
         Thread.sleep(3000);
 
-        long totalPublished = 0;
-        for (PublisherNode p : publishers) totalPublished += p.getPublishedCount();
-
         long totalDelivered = 0, totalLatencyMs = 0;
-        long[] subDeliveries = new long[SUBSCRIBER_COUNT];
         for (int i = 0; i < SUBSCRIBER_COUNT; i++) {
-            subDeliveries[i]  = subscribers.get(i).getReceivedCount();
-            totalDelivered   += subDeliveries[i];
-            totalLatencyMs   += subscribers.get(i).getTotalLatency();
+            totalDelivered += subscribers.get(i).getReceivedCount();
+            totalLatencyMs += subscribers.get(i).getTotalLatency();
         }
 
-        long[] subStats          = collectSubStats(brokers);
-        long totalSubEvaluations = subStats[0];
-        long totalSubMatches     = subStats[1];
-        double matchingRate      = totalSubEvaluations > 0
-                ? (double) totalSubMatches / totalSubEvaluations * 100 : 0;
-        double avgLatency        = totalDelivered > 0 ? (double) totalLatencyMs / totalDelivered : 0;
-        double deliveredPerSec   = feedTime > 0 ? (double) totalDelivered / (feedTime / 1000.0) : 0;
+        long[] subStats     = collectSubStats(brokers);
+        double matchingRate = subStats[0] > 0
+                ? (double) subStats[1] / subStats[0] * 100 : 0;
+        double avgLatency = totalDelivered > 0 ? (double) totalLatencyMs / totalDelivered : 0;
 
         System.out.println();
         System.out.println("  REZULTATE " + label);
         System.out.println("  " + "=".repeat(55));
-        System.out.printf("  %-30s %,12d%n",     "Publicatii emise:",          totalPublished);
-        System.out.printf("  %-30s %,12d%n",     "Livrari totale:",            totalDelivered);
-        System.out.printf("  %-30s %,12d%n",     "Evaluari sub x pub:",        totalSubEvaluations);
-        System.out.printf("  %-30s %,12d%n",     "Match-uri individuale:",     totalSubMatches);
-        System.out.printf("  %-30s %12.4f%%%n",  "Rata de potrivire:",         matchingRate);
-        System.out.printf("  %-30s %,12.2f%n",   "Debit livrari (msg/sec):",   deliveredPerSec);
-        System.out.printf("  %-30s %12.3f ms%n", "Latenta medie:",             avgLatency);
-        System.out.println("  " + "-".repeat(55));
+        System.out.printf("  (a) %-30s %,10d%n", "Publicatii livrate cu succes:", totalDelivered);
+        System.out.printf("  (b) %-30s %10.3f ms%n", "Latenta medie de livrare:",  avgLatency);
+        System.out.printf("  (c) %-30s %10.4f%%%n",  "Rata de potrivire:",          matchingRate);
+        System.out.println("  " + "=".repeat(55));
         System.out.println("  STATISTICI PERSISTENTA PostgreSQL 17:");
-        System.out.printf("  %-30s %,12d%n",     "Subscriptii INAINTE de cadere:", subsBefore);
-        System.out.printf("  %-30s %,12d%n",     "Subscriptii DUPA recuperare:",   subsAfterRecovery);
-        System.out.println("  " + "-".repeat(55));
-        System.out.println("  CONCLUZIE:");
-        System.out.println("  * Subscriptiile persistate in PostgreSQL 17 s-au incarcat corect la restart.");
-        System.out.println("  * Sistemul continua sa functioneze dupa caderea si recuperarea brokerului.");
-        System.out.println("  * Kafka pastreaza mesajele in topics, iar subscriptiile sunt restaurate din DB.");
-        System.out.println();
-
-        if (SUBSCRIBER_COUNT <= 3) {
-            for (int i = 0; i < SUBSCRIBER_COUNT; i++) {
-                double lat = subDeliveries[i] > 0
-                        ? (double) subscribers.get(i).getTotalLatency() / subDeliveries[i] : 0;
-                System.out.printf("  >> sub-%d: primite %,d, latenta %.3f ms%n",
-                        i, subDeliveries[i], lat);
-            }
-        }
+        System.out.printf("  Subscriptii INAINTE de cadere:  %,6d%n", subsBefore);
+        System.out.printf("  Subscriptii DUPA recuperare:    %,6d%n", subsAfterRecovery);
+        System.out.printf("  Concluzie: %s%n",
+                subsBefore == subsAfterRecovery
+                        ? "Recuperare perfecta — toate subscriptiile restaurate corect din PostgreSQL 17."
+                        : "Diferenta de " + Math.abs(subsAfterRecovery - subsBefore) + " subscriptii.");
         System.out.println();
 
         for (SubscriberNode s : subscribers) s.stop();
