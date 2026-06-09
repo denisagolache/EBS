@@ -1,4 +1,4 @@
-# EBS – Sistem Pub-Sub cu rutare avansata pe brokeri
+# EBS – Sistem Pub-Sub, content-based
 
 ## Evaluare
 
