@@ -17,7 +17,7 @@ feed continuu de **3 minute**, doar campul `value` (pentru masurarea pura a matc
   (c) Rata de potrivire:                  0.0010%
 ```
 
-#### Test B: eqFreq = 25% (25% `=`, 75% operatori de comparatie)
+#### Test B: eqFreq = 25% (25% `=` pe `value`, 75% operatori de comparatie)
 
 ```
   REZULTATE B (25% eq, 3 min)
